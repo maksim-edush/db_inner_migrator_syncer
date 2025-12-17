@@ -42,10 +42,12 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) routes() {
-	s.mux.Handle("/", s.staticHandler())
+	s.mux.Handle("/static/", s.staticFiles())
+	s.mux.HandleFunc("/", s.serveIndex)
 	s.mux.HandleFunc("/api/pairs", s.handlePairs)
 	s.mux.HandleFunc("/api/diff", s.handleDiff)
 	s.mux.HandleFunc("/api/status", s.handleStatus)
+	s.mux.HandleFunc("/api/pending", s.handlePending)
 	s.mux.HandleFunc("/api/scripts", s.handleScripts)
 	s.mux.HandleFunc("/api/script", s.handleScriptContent)
 	s.mux.HandleFunc("/api/apply", s.handleApply)
@@ -159,6 +161,67 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	pair, err := s.pairFromRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	scripts, err := storage.ListScripts(s.cfg.StoragePath(), pair.Name)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("list scripts: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+
+	stagingStatus, err := s.latestStatusMap(ctx, pair.Staging, pair.MigrationTable)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("staging: %v", err), http.StatusInternalServerError)
+		return
+	}
+	prodStatus, err := s.latestStatusMap(ctx, pair.Production, pair.MigrationTable)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("production: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	type pendingItem struct {
+		Name              string  `json:"name"`
+		StagingStatus     string  `json:"staging_status,omitempty"`
+		ProductionStatus  string  `json:"production_status,omitempty"`
+		StagingError      *string `json:"staging_error,omitempty"`
+		ProductionError   *string `json:"production_error,omitempty"`
+		PendingStaging    bool    `json:"pending_staging"`
+		PendingProduction bool    `json:"pending_production"`
+	}
+	out := make([]pendingItem, 0, len(scripts))
+	for _, name := range scripts {
+		stg := stagingStatus[name]
+		prod := prodStatus[name]
+		appliedStg := strings.EqualFold(stg.Status, "applied")
+		appliedProd := strings.EqualFold(prod.Status, "applied")
+		out = append(out, pendingItem{
+			Name:              name,
+			StagingStatus:     stg.Status,
+			ProductionStatus:  prod.Status,
+			StagingError:      stg.Error,
+			ProductionError:   prod.Error,
+			PendingStaging:    !appliedStg,
+			PendingProduction: !appliedProd,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"pair":    pair.Name,
+		"entries": out,
+	})
+}
+
 func (s *Server) handleScripts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -244,6 +307,7 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Pair         string `json:"pair"`
 		Name         string `json:"name"`
+		Env          string `json:"env"` // optional: staging | production | ""(both)
 		AutoRollback bool   `json:"autoRollback"`
 		Forward      string `json:"forward"`
 		Rollback     string `json:"rollback"`
@@ -292,14 +356,27 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 	runner := migrate.Runner{Pair: *pair}
-	if err := runner.Apply(ctx, req.Name, forwardSQL, rollbackSQL, forwardPath, rollbackPath, req.AutoRollback); err != nil {
-		http.Error(w, fmt.Sprintf("apply failed: %v", err), http.StatusBadRequest)
+	env := strings.ToLower(strings.TrimSpace(req.Env))
+	switch env {
+	case "", "both":
+		if err := runner.Apply(ctx, req.Name, forwardSQL, rollbackSQL, forwardPath, rollbackPath, req.AutoRollback); err != nil {
+			http.Error(w, fmt.Sprintf("apply failed: %v", err), http.StatusBadRequest)
+			return
+		}
+	case "staging", "production":
+		if err := runner.ApplyEnv(ctx, env, req.Name, forwardSQL, rollbackSQL, forwardPath, rollbackPath, req.AutoRollback); err != nil {
+			http.Error(w, fmt.Sprintf("apply failed: %v", err), http.StatusBadRequest)
+			return
+		}
+	default:
+		http.Error(w, "env must be staging, production, or both", http.StatusBadRequest)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "applied",
 		"pair":   pair.Name,
 		"name":   req.Name,
+		"env":    env,
 	})
 }
 
@@ -364,18 +441,20 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) staticHandler() http.Handler {
-	fileServer := http.FileServer(http.FS(staticFS))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if path == "/" {
-			path = "/static/index.html"
-		} else if !strings.HasPrefix(path, "/static/") {
-			path = "/static" + path
-		}
-		r.URL.Path = path
-		fileServer.ServeHTTP(w, r)
-	})
+func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+	// Serve the SPA index for root and any non-API paths.
+	data, err := staticFS.ReadFile("static/index.html")
+	if err != nil {
+		http.Error(w, "index missing", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+func (s *Server) staticFiles() http.Handler {
+	return http.StripPrefix("/static/", http.FileServer(http.FS(staticFS)))
 }
 
 func (s *Server) fetchStatus(ctx context.Context, cfg config.DBConfig, table string) ([]statusEntry, error) {
@@ -405,6 +484,22 @@ func (s *Server) fetchStatus(ctx context.Context, cfg config.DBConfig, table str
 		})
 	}
 	return out, nil
+}
+
+// latestStatusMap returns a map of migration name to the latest status row per env.
+func (s *Server) latestStatusMap(ctx context.Context, cfg config.DBConfig, table string) (map[string]statusEntry, error) {
+	entries, err := s.fetchStatus(ctx, cfg, table)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]statusEntry, len(entries))
+	for _, e := range entries {
+		if _, exists := result[e.MigrationName]; exists {
+			continue // already have latest due to ordering
+		}
+		result[e.MigrationName] = e
+	}
+	return result, nil
 }
 
 func (s *Server) pairFromRequest(r *http.Request) (*config.PairConfig, error) {

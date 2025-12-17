@@ -84,6 +84,29 @@ func (r Runner) Rollback(ctx context.Context, env, name, rollbackSQL, rollbackPa
 	return adapter.UpdateStatus(ctx, r.Pair.MigrationTable, entry)
 }
 
+// ApplyEnv runs the forward migration against a single environment (staging or production).
+func (r Runner) ApplyEnv(ctx context.Context, env, migrationName, forwardSQL, rollbackSQL, scriptPath, rollbackPath string, autoRollback bool) error {
+	targetCfg, err := r.pickEnv(env)
+	if err != nil {
+		return err
+	}
+	adapter, err := db.Open(targetCfg)
+	if err != nil {
+		return fmt.Errorf("%s connection: %w", env, err)
+	}
+	defer adapter.Close()
+
+	if err := adapter.EnsureMigrationTable(ctx, r.Pair.MigrationTable); err != nil {
+		return fmt.Errorf("ensure %s status table: %w", env, err)
+	}
+
+	checksum := dbChecksum(forwardSQL, rollbackSQL)
+	if err := applySingle(ctx, adapter, r.Pair.MigrationTable, migrationName, env, forwardSQL, rollbackSQL, scriptPath, rollbackPath, checksum, autoRollback); err != nil {
+		return fmt.Errorf("%s apply: %w", env, err)
+	}
+	return nil
+}
+
 func applySingle(ctx context.Context, adapter db.Adapter, table, migrationName, env, forwardSQL, rollbackSQL, scriptPath, rollbackPath, checksum string, autoRollback bool) error {
 	entry := db.MigrationEntry{
 		MigrationName: migrationName,
