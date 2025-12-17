@@ -1,0 +1,25 @@
+storage:
+  path: ./storage
+
+pairs:
+  - name: default
+    migration_table: migration_status
+    staging:
+      provider: postgres
+      dsn: postgres://user:password@staging-host:5432/staging_db?sslmode=disable
+      schema: public
+    production:
+      provider: mysql
+      dsn: user:password@tcp(prod-host:3306)/prod_db?parseTime=true
+
+  # Example of Postgres ↔ Postgres pair
+  - name: reporting
+    migration_table: migration_status
+    staging:
+      provider: postgres
+      dsn: postgres://user:password@staging-host:5432/reporting_stg?sslmode=disable
+      schema: public
+    production:
+      provider: postgres
+      dsn: postgres://user:password@prod-host:5432/reporting_prod?sslmode=require
+      schema: public

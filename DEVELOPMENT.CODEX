@@ -1,0 +1,76 @@
+Purpose: CLI tool (Go) to compare staging/production schemas for PostgreSQL/MySQL, store SQL migration files, and run them with approvals, status tables, and rollback support. Dockerfile provided for easy build/run.
+
+Repo layout:
+- cmd/migrator/main.go: entrypoint CLI with subcommands.
+- internal/config: YAML config loader, defaults, and helpers.
+- internal/db: provider adapters (Postgres/MySQL), schema introspection, migration status I/O.
+- internal/diff: schema diff engine for tables/columns/PKs.
+- internal/migrate: execution runner for forward/rollback scripts with status writes.
+- internal/server: HTTP server (JSON API + embedded static web UI under internal/server/static).
+- internal/storage: filesystem storage for migration + rollback files and manifests.
+
+Configuration (config.yaml):
+storage:
+  path: ./storage
+pairs:
+  - name: default
+    migration_table: migration_status
+    staging:
+      provider: postgres        # or mysql
+      dsn: postgres://user:pass@host:5432/db?sslmode=disable
+      schema: public            # optional for postgres; mysql uses current DB when blank
+    production:
+      provider: mysql
+      dsn: user:pass@tcp(host:3306)/db?parseTime=true
+Defaults: storage path ./storage, migration_table migration_status, postgres schema public. See `migrator init-config` to scaffold.
+
+Storage layout:
+- scripts/<pair>/<name>/forward.sql
+- scripts/<pair>/<name>/rollback.sql (optional)
+- scripts/<pair>/<name>/manifest.json (metadata + checksum)
+Names are sanitized (spaces -> underscores). `store-script` refuses to overwrite existing manifests.
+
+CLI commands:
+- init-config: writes a starter config file.
+- diff: connects to staging + production, introspects schema, and prints differences (tables/columns/PKs). Uses pair schemas unless overridden by flags.
+- store-script: copies forward/rollback SQL into storage with metadata.
+- list-scripts: shows stored migration names for a pair.
+- apply: apply migration to staging, then production. If --script is supplied, it is stored first; otherwise uses stored manifest. Approval prompt unless --approve. Optional --auto-rollback runs rollback script on the same env after a forward failure.
+- rollback: run a rollback script on a single env (staging/production). Uses stored rollback unless --rollback is provided. Approval prompt unless --approve.
+- status: fetch recent status rows from each database (table name from config) and print them.
+- serve: start the web UI + JSON API (defaults to :8080). API endpoints are documented by code; primary ones are /api/pairs, /api/diff, /api/status, /api/scripts (list/store), /api/script (load content), /api/apply, /api/rollback.
+
+Web UI:
+- Served from `migrator serve` at http://localhost:8080 by default. Single-page vanilla JS (no external deps) with panels for schema diff, script storage, apply, rollback, and status.
+- Pair selector is populated from /api/pairs; actions call API endpoints and display summaries (diff text + JSON, status streams, script manifests).
+- Script storage form writes forward/rollback SQL directly to storage via /api/scripts. Apply uses stored scripts (or inline payload if provided) and triggers staging→production run. Rollback can use stored or inline SQL per env.
+
+Execution flow:
+1) Ensure migration status table exists on the target DB (provider-specific DDL in internal/db). Table holds migration_name, script_file, rollback_file, status, applied_env, checksum, applied_at, error.
+2) Insert a status row with status=applying for the env.
+3) Execute forward SQL (statements split naïvely on semicolons; keep DDL/DML simple).
+4) On success, update status to applied. On failure, mark failed and, if --auto-rollback and rollback SQL exists, attempt rollback and record rolled_back/rollback_failed.
+5) Repeat for production after staging succeeds.
+Note: production failure does not automatically roll back staging; track and respond manually if needed.
+
+Schema comparison:
+- Introspects information_schema (tables, columns, column types/defaults/nullability, primary keys). Indexed objects/functions/triggers are not yet diffed; expand here if needed.
+- Outputs human-readable list of additions/removals/column changes/PK differences.
+
+Approval flow:
+- Interactive YES prompt before apply/rollback unless --approve is provided.
+- Approval is per command invocation.
+
+Docker:
+- Dockerfile builds static migrator binary via golang:1.21 and ships in a slim debian runtime. Example:
+  docker build -t migrator .
+  docker run --rm -v $PWD:/workspace migrator init-config
+  docker run --rm -v $PWD:/workspace migrator diff --config config.yaml --pair default
+Mount a directory containing config.yaml/storage to persist scripts.
+
+Limitations / next steps:
+- SQL splitting is basic (semicolon-based); complex functions/procedures with embedded semicolons may need driver multiStatements or a parser.
+- Schema diff currently covers tables/columns/PKs only; add indexes, constraints, views, routines as needed.
+- No concurrency control/locking around migrations; coordinate runs externally.
+- No version control integration yet; storage is filesystem-only per requirements.
+- No hashing of rollback in status rows beyond combined checksum; extend if separate tracking needed.
