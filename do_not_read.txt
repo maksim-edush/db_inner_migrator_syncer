@@ -1,0 +1,158 @@
+# migrate-hub — Codex Iterative Prompts
+
+This file contains ALL prompts required to iteratively develop migrate-hub using Codex.
+Use them verbatim. Do not paraphrase.
+
+------------------------------------------------------------
+MASTER SYSTEM PROMPT (USE AT START OF EVERY CODEX SESSION)
+------------------------------------------------------------
+
+You are implementing a production-grade internal tool called “migrate-hub”.
+
+Source of truth:
+- docs/Requirements.md
+- docs/Architecture.md
+- docs/API.md
+- docs/DB_Schema.sql
+- docs/Runbook.md
+
+Read ALL docs before making changes.
+
+Purpose:
+migrate-hub is a WebUI + API service that manages SQL migrations for Postgres and MySQL across multiple projects and environments (daily/stg/prd) with strict approval gates, auditability, and Google SSO (OIDC).
+
+Core constraints (never violate):
+1. No migration execution without environment-specific approval.
+2. SQL checksum mismatch invalidates approvals.
+3. Every action is audited.
+4. Execution is tracked per database target.
+5. Concurrency-safe execution with DB locks.
+6. Google SSO (OIDC) is the primary authentication method.
+7. Roles: user, manager, admin (RBAC enforced everywhere).
+
+Technology constraints:
+- Go 1.22+
+- Postgres for tool storage
+- sqlc for DB access
+- chi router
+- Server-rendered HTML templates
+- Google OAuth2 / OIDC (golang.org/x/oauth2, coreos/go-oidc)
+- Cookie-based sessions with CSRF protection
+
+Project structure:
+- cmd/server
+- internal/auth
+- internal/http
+- internal/rbac
+- internal/store
+- internal/executor
+- internal/audit
+- web/templates
+- migrations
+- docs
+- Development.md
+
+Process rules:
+- Implement incrementally.
+- One major feature per iteration.
+- Prefer correctness over cleverness.
+- Do not redesign existing features unless asked.
+
+Documentation rules:
+- Update docs if behavior changes.
+- Append Development.md after each iteration:
+  - What was implemented
+  - How to run/test
+  - Known limitations
+  - Next step
+
+Output rules:
+- Produce real Go code, SQL, templates.
+- Project must build.
+- Avoid pseudocode.
+
+------------------------------------------------------------
+ITERATION PROMPT TEMPLATE (USE EVERY ITERATION)
+------------------------------------------------------------
+
+Read docs/Requirements.md and docs/Architecture.md first.
+
+Iteration goal:
+<DEFINE ONE SMALL VERTICAL SLICE>
+
+Scope constraints:
+- Touch only relevant modules.
+- No unrelated refactors.
+- Follow existing conventions.
+
+Deliverables:
+1. Tool DB migrations (if needed)
+2. Go implementation
+3. Minimal UI (if applicable)
+4. RBAC enforcement
+5. Audit events
+6. Development.md update
+
+Acceptance criteria:
+- Feature works end-to-end
+- Unauthorized access blocked
+- Errors handled cleanly
+- Logs + audit entries exist
+
+After implementation:
+- Update Development.md
+- List manual test steps
+- Recommend next iteration
+
+------------------------------------------------------------
+RECOMMENDED ITERATION ORDER
+------------------------------------------------------------
+
+Iteration 1 — Skeleton
+Goal:
+Bootstrap project structure, config loading, tool DB connection, migrations runner, health endpoint.
+
+Iteration 2 — Google SSO Authentication
+Goal:
+Implement Google OAuth2/OIDC login with session cookies, auto-provisioning policy, logout.
+
+Iteration 3 — RBAC Middleware
+Goal:
+Role-based access control enforcement and audit of denied access.
+
+Iteration 4 — Project Management
+Goal:
+CRUD projects (admin-only create), project selection.
+
+Iteration 5 — DB Sets & DB Targets
+Goal:
+Manage DB sets, DB targets, encrypted credentials, connection test.
+
+Iteration 6 — Migrations CRUD
+Goal:
+Create/edit migrations, checksum + version logic, approval invalidation.
+
+Iteration 7 — Approval Flow
+Goal:
+Request, approve, deny migration runs.
+
+Iteration 8 — Execution Engine
+Goal:
+Execute approved migrations with locking, per-target tracking.
+
+Iteration 9 — Rollback Flow
+Goal:
+Approved rollback execution using sql_down.
+
+------------------------------------------------------------
+ANTI-DRIFT PROMPT (USE WHEN CODEX DEVIATES)
+------------------------------------------------------------
+
+Stop.
+
+You are deviating from docs/Requirements.md.
+Re-read the requirements and revert to documented behavior.
+Explain the correction briefly, then continue with the original plan.
+
+------------------------------------------------------------
+END OF FILE
