@@ -1,0 +1,70 @@
+{{define "targets"}}
+<div class="section-title">Target Migration Coverage</div>
+<div class="panel stack">
+  <form method="get" action="/ui/targets" class="inline">
+    <select name="env">
+      <option value="stg" {{if eq .Page.Env "stg"}}selected{{end}}>stg</option>
+      <option value="prd" {{if eq .Page.Env "prd"}}selected{{end}}>prd</option>
+      <option value="daily" {{if eq .Page.Env "daily"}}selected{{end}}>daily</option>
+      <option value="all" {{if eq .Page.Env "all"}}selected{{end}}>all</option>
+    </select>
+    <label class="inline">
+      <input type="checkbox" name="only_missing" value="1" {{if .Page.OnlyMissing}}checked{{end}} />
+      Only missing
+    </label>
+    <button type="submit" class="secondary">Filter</button>
+  </form>
+</div>
+
+{{range .Page.Targets}}
+  <div class="panel target-card" style="margin-top:16px;">
+    <div class="target-header">
+      <div>
+        <div class="section-title">{{.Target.Host}}:{{.Target.Port}} / {{.Target.DBName}}</div>
+        <div class="muted small">{{.DBSet.Env}} • {{.DBSet.Name}} • {{.Target.Engine}}</div>
+        <div class="mono small">DSN: {{.MaskedDSN}}</div>
+      </div>
+      <div class="target-summary">
+        <span class="badge success">applied {{.AppliedCount}}</span>
+        <span class="badge muted">missing {{.MissingCount}}</span>
+        {{if gt .ApprovedCount 0}}<span class="badge">approved {{.ApprovedCount}}</span>{{end}}
+        {{if gt .FailedCount 0}}<span class="badge danger">failed {{.FailedCount}}</span>{{end}}
+        {{if gt .RollbackedCount 0}}<span class="badge warn">rollbacked {{.RollbackedCount}}</span>{{end}}
+      </div>
+    </div>
+    <table style="margin-top:12px;">
+      <thead>
+        <tr>
+          <th>Migration</th>
+          <th>Status</th>
+          <th>Last Run</th>
+          <th>Run Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td>
+            <a href="/ui/migrations/{{.Migration.ID}}">{{.Migration.Key}}</a>
+            <div class="muted small">{{.Migration.Name}}</div>
+          </td>
+          <td>{{template "target_status_badge" .Status}}</td>
+          <td>{{formatMaybeTime .Status.RequestedAt}}</td>
+          <td>
+            {{with .Status.RunID}}
+              <a class="btn secondary" href="/ui/runs/{{.}}">View</a>
+            {{else}}
+              <span class="muted">-</span>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" class="muted">No migrations for this target.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+{{else}}
+  <div class="panel" style="margin-top:16px;">No targets found for this project.</div>
+{{end}}
+{{end}}

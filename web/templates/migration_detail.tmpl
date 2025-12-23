@@ -1,0 +1,133 @@
+{{define "migration_detail"}}
+<div class="section-title">Migration: {{.Page.Migration.Key}}</div>
+
+<div class="panel two-col">
+  <div>
+    <div class="section-title">Metadata</div>
+    <p><strong>Name:</strong> {{.Page.Migration.Name}}</p>
+    <p><strong>Jira:</strong> {{if .Page.Migration.Jira}}{{.Page.Migration.Jira}}{{else}}-{{end}}</p>
+    <p><strong>Description:</strong> {{if .Page.Migration.Description}}{{.Page.Migration.Description}}{{else}}-{{end}}</p>
+    <p><strong>Version:</strong> {{.Page.Migration.Version}}</p>
+    <p><strong>Transaction Mode:</strong> {{.Page.Migration.TransactionMode}}</p>
+    <p><strong>Checksum Up:</strong> {{.Page.Migration.ChecksumUp}}</p>
+    <p><strong>Checksum Down:</strong> {{if .Page.Migration.ChecksumDown}}{{.Page.Migration.ChecksumDown}}{{else}}-{{end}}</p>
+  </div>
+  <div>
+    <div class="section-title">Update Migration</div>
+    <form method="post" action="/ui/migrations/{{.Page.Migration.ID}}/edit" class="stack">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+      <label>Key <input type="text" value="{{.Page.Migration.Key}}" disabled /></label>
+      <label>Name <input type="text" name="name" value="{{.Page.Migration.Name}}" /></label>
+      <label>Jira (optional) <input type="text" name="jira" value="{{.Page.Migration.Jira}}" /></label>
+      <label>Description (optional) <input type="text" name="description" value="{{.Page.Migration.Description}}" /></label>
+      <label>Transaction Mode
+        <select name="transaction_mode">
+          <option value="auto" {{if eq .Page.Migration.TransactionMode "auto"}}selected{{end}}>auto</option>
+          <option value="single_transaction" {{if eq .Page.Migration.TransactionMode "single_transaction"}}selected{{end}}>single_transaction</option>
+          <option value="no_transaction" {{if eq .Page.Migration.TransactionMode "no_transaction"}}selected{{end}}>no_transaction</option>
+        </select>
+      </label>
+      <label>SQL Up <textarea name="sql_up">{{.Page.Migration.SQLUp}}</textarea></label>
+      <label>SQL Down <textarea name="sql_down">{{if .Page.Migration.SQLDown}}{{.Page.Migration.SQLDown}}{{end}}</textarea></label>
+      <button type="submit">Update</button>
+    </form>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">SQL</div>
+  <div class="tabs">
+    <a href="#sql-up">Up</a>
+    <a href="#sql-down">Down</a>
+  </div>
+  <div id="sql-up" class="code">{{.Page.Migration.SQLUp}}</div>
+  <div id="sql-down" class="code" style="margin-top:12px;">
+    {{if .Page.Migration.SQLDown}}{{.Page.Migration.SQLDown}}{{else}}(no sql_down){{end}}
+  </div>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Status by Environment</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Env</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range $env, $status := .Page.Statuses}}
+      <tr>
+        <td>{{$env}}</td>
+        <td>{{template "env_badge" $status}}</td>
+        <td>
+          {{with $status.RunID}}
+            <a class="btn secondary" href="/ui/runs/{{.}}">Last run</a>
+            {{if eq $status.Label "approved"}}
+              <form method="post" action="/ui/runs/{{.}}/execute" class="inline">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+                <button type="submit" class="secondary">
+                  {{if eq $status.RunType "rollback"}}Rollback{{else}}Run{{end}}
+                </button>
+              </form>
+            {{end}}
+          {{end}}
+          {{ $sets := index $.Page.DBSets $env }}
+          {{if gt (len $sets) 0}}
+            <form method="post" action="/ui/migrations/{{$.Page.Migration.ID}}/request-approval" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <input type="hidden" name="env" value="{{$env}}" />
+              <select name="db_set_id">
+                {{range $sets}}
+                  <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+              </select>
+              <button type="submit" class="secondary">Request approval</button>
+            </form>
+            <form method="post" action="/ui/migrations/{{$.Page.Migration.ID}}/request-rollback" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <input type="hidden" name="env" value="{{$env}}" />
+              <select name="db_set_id">
+                {{range $sets}}
+                  <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+              </select>
+              <button type="submit" class="secondary">Request rollback</button>
+            </form>
+          {{else}}
+            <span class="muted">No DB sets</span>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">History</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Payload</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Events}}
+      <tr>
+        <td>{{formatTime .Time}}</td>
+        <td>{{if .ActorEmail}}{{.ActorEmail}}{{else}}-{{end}}</td>
+        <td>{{.Action}}</td>
+        <td><pre class="code code-small">{{.Payload}}</pre></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="4" class="muted">No history yet.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

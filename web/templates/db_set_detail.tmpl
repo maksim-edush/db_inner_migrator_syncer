@@ -1,0 +1,73 @@
+{{define "db_set_detail"}}
+<div class="section-title">DB Set: {{.Page.DBSet.Name}} ({{.Page.DBSet.Env}})</div>
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Engine</th>
+        <th>Host</th>
+        <th>DB</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Targets}}
+      <tr>
+        <td>{{.Engine}}</td>
+        <td>{{.Host}}:{{.Port}}</td>
+        <td>{{.DBName}}</td>
+        <td>{{if .IsActive}}Active{{else}}Disabled{{end}}</td>
+        <td class="stack">
+          <form method="post" action="/ui/targets/{{.ID}}/test-connection" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <button type="submit" class="secondary">Test</button>
+          </form>
+          {{if $.Page.IsAdmin}}
+          <form method="post" action="/ui/targets/{{.ID}}/disable" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <button type="submit" class="danger">Disable</button>
+          </form>
+          {{end}}
+          <details>
+            <summary>Edit</summary>
+            <form method="post" action="/ui/targets/{{.ID}}/edit" class="stack" style="margin-top:8px;">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <label>Host <input type="text" name="host" value="{{.Host}}" /></label>
+              <label>Port <input type="number" name="port" value="{{.Port}}" /></label>
+              <label>DB Name <input type="text" name="dbname" value="{{.DBName}}" /></label>
+              <label>Username <input type="text" name="username" value="{{.Username}}" /></label>
+              <label>Password <input type="password" name="password" placeholder="Leave blank to keep" /></label>
+              <label>Options JSON <textarea name="options_json">{{.Options}}</textarea></label>
+              <button type="submit">Save</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="muted">No targets yet.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Add Target</div>
+  <form method="post" action="/ui/db-sets/{{.Page.DBSet.ID}}/targets" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+    <label>Engine
+      <select name="engine">
+        <option value="postgres">postgres</option>
+        <option value="mysql">mysql</option>
+      </select>
+    </label>
+    <label>Host <input type="text" name="host" required /></label>
+    <label>Port <input type="number" name="port" required /></label>
+    <label>DB Name <input type="text" name="dbname" required /></label>
+    <label>Username <input type="text" name="username" required /></label>
+    <label>Password <input type="password" name="password" required /></label>
+    <label>Options JSON <textarea name="options_json" placeholder="{ }"></textarea></label>
+    <button type="submit">Add Target</button>
+  </form>
+</div>
+{{end}}

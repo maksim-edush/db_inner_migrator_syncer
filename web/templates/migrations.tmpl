@@ -1,0 +1,96 @@
+{{define "migrations"}}
+<div class="section-title">Migrations</div>
+<div class="panel stack">
+  <form method="get" action="/ui/migrations" class="inline">
+    <input type="text" name="q" placeholder="Search key/name/jira" value="{{.Page.Query}}" />
+    <select name="env">
+      <option value="">Env</option>
+      <option value="daily" {{if eq .Page.EnvFilter "daily"}}selected{{end}}>daily</option>
+      <option value="stg" {{if eq .Page.EnvFilter "stg"}}selected{{end}}>stg</option>
+      <option value="prd" {{if eq .Page.EnvFilter "prd"}}selected{{end}}>prd</option>
+    </select>
+    <select name="status">
+      <option value="">Status</option>
+      <option value="draft" {{if eq .Page.StatusFilter "draft"}}selected{{end}}>draft</option>
+      <option value="awaiting_approve" {{if eq .Page.StatusFilter "awaiting_approve"}}selected{{end}}>awaiting_approve</option>
+      <option value="approved" {{if eq .Page.StatusFilter "approved"}}selected{{end}}>approved</option>
+      <option value="executed" {{if eq .Page.StatusFilter "executed"}}selected{{end}}>executed</option>
+      <option value="running" {{if eq .Page.StatusFilter "running"}}selected{{end}}>running</option>
+      <option value="failed" {{if eq .Page.StatusFilter "failed"}}selected{{end}}>failed</option>
+      <option value="needs_reapproval" {{if eq .Page.StatusFilter "needs_reapproval"}}selected{{end}}>needs_reapproval</option>
+    </select>
+    <label class="inline">
+      <input type="checkbox" name="pending" value="1" {{if .Page.PendingOnly}}checked{{end}} />
+      Only pending approvals
+    </label>
+    <button type="submit" class="secondary">Filter</button>
+    <a class="btn" href="/ui/migrations/new">Create migration</a>
+  </form>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Name</th>
+        <th>Jira</th>
+        <th>Version</th>
+        <th>Updated</th>
+        <th>Daily</th>
+        <th>Stg</th>
+        <th>Prd</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Migrations}}
+      <tr>
+        <td><a href="/ui/migrations/{{.Migration.ID}}">{{.Migration.Key}}</a></td>
+        <td>{{.Migration.Name}}</td>
+        <td>{{if .Migration.Jira}}{{.Migration.Jira}}{{else}}-{{end}}</td>
+        <td>{{.Migration.Version}}</td>
+        <td>{{formatTime .Migration.UpdatedAt}}</td>
+        {{ $daily := index .Statuses "daily" }}
+        <td>
+          {{template "env_badge" $daily}}
+          {{if and (eq $daily.Label "approved") $daily.RunID}}
+            {{with $daily.RunID}}
+            <form method="post" action="/ui/runs/{{.}}/execute" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <button type="submit" class="secondary">{{if eq $daily.RunType "rollback"}}Rollback{{else}}Run{{end}}</button>
+            </form>
+            {{end}}
+          {{end}}
+        </td>
+        {{ $stg := index .Statuses "stg" }}
+        <td>
+          {{template "env_badge" $stg}}
+          {{if and (eq $stg.Label "approved") $stg.RunID}}
+            {{with $stg.RunID}}
+            <form method="post" action="/ui/runs/{{.}}/execute" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <button type="submit" class="secondary">{{if eq $stg.RunType "rollback"}}Rollback{{else}}Run{{end}}</button>
+            </form>
+            {{end}}
+          {{end}}
+        </td>
+        {{ $prd := index .Statuses "prd" }}
+        <td>
+          {{template "env_badge" $prd}}
+          {{if and (eq $prd.Label "approved") $prd.RunID}}
+            {{with $prd.RunID}}
+            <form method="post" action="/ui/runs/{{.}}/execute" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <button type="submit" class="secondary">{{if eq $prd.RunType "rollback"}}Rollback{{else}}Run{{end}}</button>
+            </form>
+            {{end}}
+          {{end}}
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="8" class="muted">No migrations.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

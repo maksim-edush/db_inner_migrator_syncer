@@ -1,0 +1,19 @@
+{{define "target_status_badge"}}
+{{if eq .Label "applied"}}
+  <span class="badge success">applied</span>
+{{else if eq .Label "missing"}}
+  <span class="badge muted">missing</span>
+{{else if eq .Label "rollbacked"}}
+  <span class="badge warn">rollbacked</span>
+{{else if eq .Label "approved"}}
+  <span class="badge">approved</span>
+{{else if eq .Label "awaiting_approval"}}
+  <span class="badge warn">awaiting</span>
+{{else if eq .Label "running"}}
+  <span class="badge">running</span>
+{{else if eq .Label "failed"}}
+  <span class="badge danger">failed</span>
+{{else}}
+  <span class="badge muted">{{.Label}}</span>
+{{end}}
+{{end}}

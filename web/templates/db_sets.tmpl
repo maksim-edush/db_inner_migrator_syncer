@@ -1,0 +1,60 @@
+{{define "db_sets"}}
+<div class="section-title">DB Sets ({{.Page.Env}})</div>
+<div class="tabs">
+  <a href="/ui/db-sets?env=daily">daily</a>
+  <a href="/ui/db-sets?env=stg">stg</a>
+  <a href="/ui/db-sets?env=prd">prd</a>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Env</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.DBSets}}
+      <tr>
+        <td><a href="/ui/db-sets/{{.ID}}">{{.Name}}</a></td>
+        <td>{{.Env}}</td>
+        <td>{{if .IsActive}}Active{{else}}Disabled{{end}}</td>
+        <td>
+          {{if $.Page.IsAdmin}}
+          <form method="post" action="/ui/db-sets/{{.ID}}/disable" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <button type="submit" class="danger">Disable</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="4" class="muted">No db sets.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Create DB Set</div>
+  <form method="post" action="/ui/db-sets" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+    <label>
+      Env
+      <select name="env">
+        <option value="daily" {{if eq .Page.Env "daily"}}selected{{end}}>daily</option>
+        <option value="stg" {{if eq .Page.Env "stg"}}selected{{end}}>stg</option>
+        <option value="prd" {{if eq .Page.Env "prd"}}selected{{end}}>prd</option>
+      </select>
+    </label>
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</div>
+{{end}}

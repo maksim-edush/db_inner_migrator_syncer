@@ -1,0 +1,53 @@
+{{define "runs"}}
+<div class="section-title">Runs</div>
+<div class="panel">
+  <form method="get" action="/ui/runs" class="inline">
+    <select name="env">
+      <option value="">Env</option>
+      <option value="daily" {{if eq .Page.Filter.Env "daily"}}selected{{end}}>daily</option>
+      <option value="stg" {{if eq .Page.Filter.Env "stg"}}selected{{end}}>stg</option>
+      <option value="prd" {{if eq .Page.Filter.Env "prd"}}selected{{end}}>prd</option>
+    </select>
+    <select name="status">
+      <option value="">Status</option>
+      <option value="awaiting_approval" {{if eq .Page.Filter.Status "awaiting_approval"}}selected{{end}}>awaiting_approval</option>
+      <option value="approved" {{if eq .Page.Filter.Status "approved"}}selected{{end}}>approved</option>
+      <option value="running" {{if eq .Page.Filter.Status "running"}}selected{{end}}>running</option>
+      <option value="executed" {{if eq .Page.Filter.Status "executed"}}selected{{end}}>executed</option>
+      <option value="failed" {{if eq .Page.Filter.Status "failed"}}selected{{end}}>failed</option>
+      <option value="denied" {{if eq .Page.Filter.Status "denied"}}selected{{end}}>denied</option>
+    </select>
+    <input type="text" name="migration_key" placeholder="Migration key" value="{{.Page.Filter.MigrationKey}}" />
+    <button type="submit" class="secondary">Filter</button>
+  </form>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Env</th>
+        <th>Type</th>
+        <th>Migration</th>
+        <th>Status</th>
+        <th>Requested By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Runs}}
+      <tr>
+        <td>{{formatTime .RequestedAt}}</td>
+        <td>{{.Env}}</td>
+        <td>{{.RunType}}</td>
+        <td><a href="/ui/runs/{{.ID}}">{{.MigrationKey}}</a></td>
+        <td><span class="badge">{{.Status}}</span></td>
+        <td>{{.RequestedBy}}</td>
+      </tr>
+      {{else}}
+      <tr><td colspan="6" class="muted">No runs found.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

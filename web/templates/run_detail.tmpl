@@ -1,0 +1,58 @@
+{{define "run_detail"}}
+<div class="section-title">Run Detail</div>
+<div class="panel">
+  <p><strong>Env:</strong> {{.Page.Run.Env}}</p>
+  <p><strong>Status:</strong> {{.Page.Run.Status}}</p>
+  <p><strong>Run Type:</strong> {{.Page.Run.RunType}}</p>
+  <p><strong>Requested By:</strong> {{.Page.RequestedByEmail}}</p>
+  <p><strong>Approved By:</strong> {{.Page.ApprovedByEmail}}</p>
+  <p><strong>Executed By:</strong> {{.Page.ExecutedByEmail}}</p>
+  <p><strong>Requested At:</strong> {{formatTime .Page.Run.RequestedAt}}</p>
+  <p><strong>Approved At:</strong> {{formatMaybeTime .Page.Run.ApprovedAt}}</p>
+  <p><strong>Started At:</strong> {{formatMaybeTime .Page.Run.StartedAt}}</p>
+  <p><strong>Finished At:</strong> {{formatMaybeTime .Page.Run.FinishedAt}}</p>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Run Items</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Target</th>
+        <th>Status</th>
+        <th>Started</th>
+        <th>Finished</th>
+        <th>Error</th>
+        <th>Logs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Run.Items}}
+      <tr>
+        <td>{{.DBTargetID}}</td>
+        <td>{{.Status}}</td>
+        <td>{{formatMaybeTime .StartedAt}}</td>
+        <td>{{formatMaybeTime .FinishedAt}}</td>
+        <td>{{if .Error}}{{.Error}}{{else}}-{{end}}</td>
+        <td><a href="/ui/runs/{{$.Page.Run.ID}}/items/{{.ID}}/logs">View logs</a></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="6" class="muted">No run items.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Actions</div>
+  {{if eq .Page.Run.Status "approved"}}
+    <form method="post" action="/ui/runs/{{.Page.Run.ID}}/execute" class="inline">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+      <button type="submit">Execute</button>
+    </form>
+  {{else}}
+    <button type="button" class="secondary" disabled>Execute</button>
+  {{end}}
+  <button type="button" class="secondary" disabled>Cancel</button>
+</div>
+{{end}}

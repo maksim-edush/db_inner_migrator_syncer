@@ -114,7 +114,7 @@ Note: store actual state as events + denormalized columns for UI.
 ## User Stories
 ### User
 1. Create new DB sets in different environments (auth_stg, auth_prd) and specify connection info.
-2. Create migration with: key, name, jira, description, sql_up, sql_down (optional), transaction_mode.
+2. Create migration with: key, name, jira (optional), description (optional), sql_up, sql_down (optional), transaction_mode.
 3. View migrations list and details.
 4. Request to start migration on daily/stg.
 5. Execute daily/stg migrations after manager approval.
