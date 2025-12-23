@@ -1,0 +1,22 @@
+{{define "migration_new"}}
+<div class="section-title">Create Migration</div>
+<div class="panel">
+  <form method="post" action="/ui/migrations/new" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+    <label>Key <input type="text" name="key" required /></label>
+    <label>Name <input type="text" name="name" required /></label>
+    <label>Jira (optional) <input type="text" name="jira" /></label>
+    <label>Description (optional) <input type="text" name="description" /></label>
+    <label>Transaction Mode
+      <select name="transaction_mode">
+        <option value="auto">auto</option>
+        <option value="single_transaction">single_transaction</option>
+        <option value="no_transaction">no_transaction</option>
+      </select>
+    </label>
+    <label>SQL Up <textarea name="sql_up" required></textarea></label>
+    <label>SQL Down (optional) <textarea name="sql_down"></textarea></label>
+    <button type="submit">Create</button>
+  </form>
+</div>
+{{end}}

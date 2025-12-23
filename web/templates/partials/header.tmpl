@@ -1,0 +1,45 @@
+{{define "header"}}
+<header>
+  <div class="brand">migrate-hub</div>
+  {{if .User}}
+    <nav class="nav">
+      <a href="/ui" class="{{if eq .Path "/ui"}}active{{end}}">Dashboard</a>
+      <a href="/ui/projects" class="{{if eq .Path "/ui/projects"}}active{{end}}">Projects</a>
+      <a href="/ui/targets" class="{{if eq .Path "/ui/targets"}}active{{end}}">Targets</a>
+      <a href="/ui/db-sets?env=stg">DB Sets</a>
+      <a href="/ui/migrations">Migrations</a>
+      {{if or (hasRole .User "manager") (hasRole .User "admin")}}
+        <a href="/ui/approvals">Approvals</a>
+      {{end}}
+      <a href="/ui/runs">Runs</a>
+      {{if hasRole .User "admin"}}
+        <a href="/ui/users" class="{{if eq .Path "/ui/users"}}active{{end}}">Users</a>
+      {{end}}
+    </nav>
+
+    <div class="nav">
+      <form method="post" action="/ui/projects/select" class="inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+        <select name="project_id">
+          <option value="">Select project</option>
+          {{range .Projects}}
+            <option value="{{.ID}}" {{if $.ActiveProject}}{{if eq $.ActiveProject.ID .ID}}selected{{end}}{{end}}>{{.Name}}</option>
+          {{end}}
+        </select>
+        <button type="submit" class="secondary">Set</button>
+      </form>
+      <button type="button" class="secondary" id="theme-toggle">Theme</button>
+      <div class="user">{{.User.Email}} ({{.User.Role}})</div>
+      <form method="post" action="/ui/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+        <button type="submit" class="secondary">Logout</button>
+      </form>
+    </div>
+  {{else}}
+    <div class="nav">
+      <button type="button" class="secondary" id="theme-toggle">Theme</button>
+      <a class="btn secondary" href="/api/v1/auth/google/start">Sign in</a>
+    </div>
+  {{end}}
+</header>
+{{end}}

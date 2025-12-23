@@ -1,0 +1,51 @@
+{{define "dashboard"}}
+<div class="section-title">Dashboard</div>
+{{if .Page.NeedsProject}}
+  <div class="panel">Select a project to view dashboard metrics.</div>
+{{else}}
+  <div class="grid grid-3">
+    <div class="panel">
+      <div class="card-title">Pending Approvals</div>
+      <div class="card-value">{{.Page.PendingCount}}</div>
+    </div>
+    <div class="panel">
+      <div class="card-title">Running Runs</div>
+      <div class="card-value">{{.Page.RunningCount}}</div>
+    </div>
+    <div class="panel">
+      <div class="card-title">Failed Runs (24h)</div>
+      <div class="card-value">{{.Page.FailedCount}}</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <div class="section-title">Recent Runs</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Env</th>
+          <th>Project</th>
+          <th>Migration</th>
+          <th>Status</th>
+          <th>Requested By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Page.RecentRuns}}
+        <tr>
+          <td>{{formatTime .RequestedAt}}</td>
+          <td>{{.Env}}</td>
+          <td>{{.ProjectName}}</td>
+          <td>{{.MigrationKey}}</td>
+          <td><span class="badge">{{.Status}}</span></td>
+          <td>{{.RequestedBy}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="muted">No runs yet.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+{{end}}
+{{end}}

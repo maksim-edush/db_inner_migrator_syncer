@@ -1,0 +1,9 @@
+{{define "run_logs"}}
+<div class="section-title">Run Item Logs</div>
+<div class="panel">
+  <p><strong>Run:</strong> <a href="/ui/runs/{{.Page.RunID}}">{{.Page.RunID}}</a></p>
+  <p><strong>Item:</strong> {{.Page.Item.ID}}</p>
+  <p><strong>Status:</strong> {{.Page.Item.Status}}</p>
+  <div class="code">{{.Page.LogText}}</div>
+</div>
+{{end}}

@@ -52,7 +52,7 @@ Auth: cookie sessions for WebUI. Use CSRF token for state-changing browser reque
 ## Migrations
 - `GET /migrations?project_id=...&q=...`
 - `POST /migrations`
-  - `{ "project_id":"...", "key":"20251220_001_add_col", "name":"...", "jira":"AUTH-123", "description":"...", "sql_up":"...", "sql_down":"...", "transaction_mode":"auto|single_transaction|no_transaction" }`
+  - `{ "project_id":"...", "key":"20251220_001_add_col", "name":"...", "jira":"AUTH-123 (optional)", "description":"... (optional)", "sql_up":"...", "sql_down":"...", "transaction_mode":"auto|single_transaction|no_transaction" }`
 - `GET /migrations/{id}`
 - `PATCH /migrations/{id}`
   - Editing sql_up/sql_down increments version and invalidates approvals

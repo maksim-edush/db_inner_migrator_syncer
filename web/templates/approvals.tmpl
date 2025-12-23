@@ -1,0 +1,52 @@
+{{define "approvals"}}
+<div class="section-title">Approvals</div>
+<div class="panel">
+  <form method="get" action="/ui/approvals" class="inline">
+    <select name="env">
+      <option value="">All env</option>
+      <option value="daily" {{if eq .Page.Env "daily"}}selected{{end}}>daily</option>
+      <option value="stg" {{if eq .Page.Env "stg"}}selected{{end}}>stg</option>
+      <option value="prd" {{if eq .Page.Env "prd"}}selected{{end}}>prd</option>
+    </select>
+    <button type="submit" class="secondary">Filter</button>
+  </form>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Env</th>
+        <th>Migration</th>
+        <th>Requested By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Runs}}
+      <tr>
+        <td><a href="/ui/runs/{{.ID}}">{{.RunType}}</a></td>
+        <td>{{.Env}}</td>
+        <td>{{.MigrationKey}}</td>
+        <td>{{.RequestedBy}}</td>
+        <td>
+          <form method="post" action="/ui/runs/{{.ID}}/approve" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <input type="text" name="comment" placeholder="comment" />
+            <button type="submit">Approve</button>
+          </form>
+          <form method="post" action="/ui/runs/{{.ID}}/deny" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <input type="text" name="comment" placeholder="comment" />
+            <button type="submit" class="danger">Deny</button>
+          </form>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="muted">No pending approvals.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

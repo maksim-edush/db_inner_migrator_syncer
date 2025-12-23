@@ -1,0 +1,23 @@
+{{define "env_badge"}}
+{{if .}}
+  {{if eq .Label "executed"}}
+    <span class="badge success">executed</span>
+  {{else if eq .Label "approved"}}
+    <span class="badge">approved</span>
+  {{else if eq .Label "awaiting_approve"}}
+    <span class="badge warn">awaiting</span>
+  {{else if eq .Label "running"}}
+    <span class="badge">running</span>
+  {{else if eq .Label "failed"}}
+    <span class="badge danger">failed</span>
+  {{else if eq .Label "needs_reapproval"}}
+    <span class="badge danger">re-approve</span>
+  {{else if eq .Label "rollbacked"}}
+    <span class="badge">rollbacked</span>
+  {{else}}
+    <span class="badge muted">{{.Label}}</span>
+  {{end}}
+{{else}}
+  <span class="badge muted">draft</span>
+{{end}}
+{{end}}

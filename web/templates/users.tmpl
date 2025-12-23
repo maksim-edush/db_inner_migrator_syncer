@@ -1,0 +1,84 @@
+{{define "users"}}
+<div class="section-title">Users</div>
+<div class="panel stack">
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Provider</th>
+        <th>Status</th>
+        <th>Last Login</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Page.Users}}
+      <tr {{if .IsDisabled}}class="muted"{{end}}>
+        <td>{{.Email}}</td>
+        <td>
+          <input class="compact" type="text" name="name" value="{{.Name}}" form="user-{{.ID}}" {{if .IsDisabled}}disabled{{end}} required />
+        </td>
+        <td>
+          <select class="compact" name="role" form="user-{{.ID}}" {{if .IsDisabled}}disabled{{end}}>
+            <option value="user" {{if eq .Role "user"}}selected{{end}}>user</option>
+            <option value="manager" {{if eq .Role "manager"}}selected{{end}}>manager</option>
+            <option value="admin" {{if eq .Role "admin"}}selected{{end}}>admin</option>
+          </select>
+        </td>
+        <td>{{.Provider}}</td>
+        <td>
+          {{if .IsDisabled}}
+            <span class="badge danger">disabled</span>
+          {{else}}
+            <span class="badge success">active</span>
+          {{end}}
+        </td>
+        <td>{{formatMaybeTime .LastLoginAt}}</td>
+        <td class="actions">
+          <form id="user-{{.ID}}" method="post" action="/ui/users/{{.ID}}/update" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <button type="submit" class="secondary" {{if .IsDisabled}}disabled{{end}}>Update</button>
+          </form>
+          {{if .IsDisabled}}
+            <span class="muted">Disabled</span>
+          {{else}}
+            <form method="post" action="/ui/users/{{.ID}}/disable" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+              <button type="submit" class="danger">Disable</button>
+            </form>
+          {{end}}
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="7" class="muted">No users found.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <div class="section-title">Create User</div>
+  <form method="post" action="/ui/users" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+    <label>
+      Email
+      <input type="email" name="email" required />
+    </label>
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Role
+      <select name="role">
+        <option value="user">user</option>
+        <option value="manager">manager</option>
+        <option value="admin">admin</option>
+      </select>
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</div>
+{{end}}
